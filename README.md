@@ -57,13 +57,58 @@ The project has been initialized with a clean folder structure.
 
 Current progress:
 
-* Project folder created
-* Initial directory structure created
-* `.gitignore` file added
-* README documentation started
-* GitHub repository setup in progress
+- Repository initialized with a structured project layout
+- Initial dataset understanding completed
+- Exploratory Data Analysis (EDA) completed
+- Data cleaning and validation completed
+- Docker infrastructure configured
+- Apache Kafka configured using Docker Compose
+- Kafka UI configured for topic monitoring
+- MongoDB configured for storing processed transactions
+- Mongo Express configured for database management
+- Kafka topic `transactions` created with **3 partitions**
+- Development environment synchronized using Git
+
 
 ---
+
+## Docker Infrastructure
+
+Start all required services using Docker Compose:
+
+```bash
+docker compose -f docker/docker-compose.yml up -d
+```
+
+### Available Services
+
+| Service | URL |
+|----------|-----|
+| Kafka UI | http://localhost:8080 |
+| Mongo Express | http://localhost:8081 |
+
+Ensure Docker Desktop is running before executing the above command.
+
+## Current Data Pipeline
+
+```text
+PaySim Dataset
+       │
+       ▼
+Python Kafka Producer
+       │
+       ▼
+Kafka Topic (transactions)
+       │
+       ▼
+Kafka Consumer
+       │
+       ▼
+MongoDB
+       │
+       ▼
+Fraud Detection Pipeline
+```
 
 ## Project Structure
 
@@ -74,6 +119,9 @@ real_time_fraud_detection/
 │   ├── raw/
 │   └── processed/
 │
+├── docker/
+│    └── docker-compose.yml
+│
 ├── notebooks/
 │
 ├── src/
@@ -82,6 +130,7 @@ real_time_fraud_detection/
 │   ├── features/
 │   ├── models/
 │   ├── streaming/
+│   │   └── producer.py
 │   ├── database/
 │   └── api/
 │
@@ -120,12 +169,16 @@ real_time_fraud_detection/
 
 ## Next Steps
 
-The next steps are:
+The upcoming development tasks include:
 
-1. Create and connect the GitHub repository
-2. Download the PaySim dataset
-3. Add the dataset locally inside `data/raw`
-4. Start data understanding and exploratory analysis
-5. Prepare the first notebook for dataset inspection
+1. Implement the Python Kafka Producer (`src/streaming/producer.py`)
+2. Stream PaySim transactions into the Kafka `transactions` topic
+3. Perform feature engineering for fraud detection
+4. Train and evaluate machine learning models
+5. Build the Kafka consumer to process streaming transactions
+6. Store processed transactions in MongoDB
+7. Develop REST APIs using FastAPI
+8. Build dashboards for fraud monitoring and visualization
+9. Complete testing, documentation, and deployment
 
 ---

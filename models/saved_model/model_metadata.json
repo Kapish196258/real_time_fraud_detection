@@ -1,0 +1,33 @@
+{
+  "best_model": "Random Forest",
+  "results": [
+    {
+      "Model": "Random Forest",
+      "Precision": 0.999390243902439,
+      "Recall": 0.9975654290931223,
+      "F1": 0.9984770027413951,
+      "False Negatives": 4
+    },
+    {
+      "Model": "Decision Tree",
+      "Precision": 0.9975654290931223,
+      "Recall": 0.9975654290931223,
+      "F1": 0.9975654290931223,
+      "False Negatives": 4
+    },
+    {
+      "Model": "HistGradientBoosting",
+      "Precision": 0.9873341375150784,
+      "Recall": 0.9963481436396835,
+      "F1": 0.9918206604059376,
+      "False Negatives": 6
+    },
+    {
+      "Model": "Logistic Regression",
+      "Precision": 0.02108492978246332,
+      "Recall": 0.9786975045648204,
+      "F1": 0.04128051754678715,
+      "False Negatives": 35
+    }
+  ]
+}

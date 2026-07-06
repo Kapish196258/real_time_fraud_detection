@@ -1,33 +1,158 @@
 {
-  "best_model": "Random Forest",
-  "results": [
-    {
-      "Model": "Random Forest",
-      "Precision": 0.999390243902439,
-      "Recall": 0.9975654290931223,
-      "F1": 0.9984770027413951,
-      "False Negatives": 4
+    "best_model": "Random Forest",
+    "target": "isFraud",
+    "features": [
+        "step",
+        "amount",
+        "oldbalanceOrg",
+        "newbalanceOrig",
+        "oldbalanceDest",
+        "newbalanceDest",
+        "is_dest_customer",
+        "is_dest_merchant",
+        "origin_balance_diff",
+        "destination_balance_diff",
+        "origin_balance_error",
+        "destination_balance_error",
+        "abs_origin_balance_error",
+        "abs_destination_balance_error",
+        "amount_to_oldbalanceOrg_ratio",
+        "amount_to_oldbalanceDest_ratio",
+        "is_zero_oldbalanceOrg",
+        "is_zero_oldbalanceDest",
+        "type_CASH_IN",
+        "type_CASH_OUT",
+        "type_DEBIT",
+        "type_PAYMENT",
+        "type_TRANSFER"
+    ],
+    "dropped_columns": [
+        "transaction_id",
+        "type",
+        "isFlaggedFraud",
+        "is_origin_customer",
+        "isFraud"
+    ],
+    "evaluation_results": {
+        "Accuracy": {
+            "Random Forest": 0.9999968566408177,
+            "Decision Tree": 0.9999622796898133,
+            "HistGradientBoosting": 0.9999465628939022,
+            "Logistic Regression": 0.9419342975063731
+        },
+        "Precision": {
+            "Random Forest": 1.0,
+            "Decision Tree": 0.9738562091503268,
+            "HistGradientBoosting": 0.9624192601291838,
+            "Logistic Regression": 0.021308455799530897
+        },
+        "Recall": {
+            "Random Forest": 0.9975654290931223,
+            "Decision Tree": 0.9975654290931223,
+            "HistGradientBoosting": 0.9975654290931223,
+            "Logistic Regression": 0.9786975045648204
+        },
+        "F1 Score": {
+            "Random Forest": 0.9987812309567337,
+            "Decision Tree": 0.9855682501503308,
+            "HistGradientBoosting": 0.9796772265391512,
+            "Logistic Regression": 0.041708816434518715
+        },
+        "False Positives": {
+            "Random Forest": 0.0,
+            "Decision Tree": 44.0,
+            "HistGradientBoosting": 64.0,
+            "Logistic Regression": 73855.0
+        },
+        "False Negatives": {
+            "Random Forest": 4.0,
+            "Decision Tree": 4.0,
+            "HistGradientBoosting": 4.0,
+            "Logistic Regression": 35.0
+        },
+        "True Positives": {
+            "Random Forest": 1639.0,
+            "Decision Tree": 1639.0,
+            "HistGradientBoosting": 1639.0,
+            "Logistic Regression": 1608.0
+        },
+        "True Negatives": {
+            "Random Forest": 1270881.0,
+            "Decision Tree": 1270837.0,
+            "HistGradientBoosting": 1270817.0,
+            "Logistic Regression": 1197026.0
+        }
     },
-    {
-      "Model": "Decision Tree",
-      "Precision": 0.9975654290931223,
-      "Recall": 0.9975654290931223,
-      "F1": 0.9975654290931223,
-      "False Negatives": 4
-    },
-    {
-      "Model": "HistGradientBoosting",
-      "Precision": 0.9873341375150784,
-      "Recall": 0.9963481436396835,
-      "F1": 0.9918206604059376,
-      "False Negatives": 6
-    },
-    {
-      "Model": "Logistic Regression",
-      "Precision": 0.02108492978246332,
-      "Recall": 0.9786975045648204,
-      "F1": 0.04128051754678715,
-      "False Negatives": 35
-    }
-  ]
+    "threshold_results": [
+        {
+            "Threshold": 0.2,
+            "Precision": 0.9987812309567337,
+            "Recall": 0.9975654290931223,
+            "F1 Score": 0.9981729598051157,
+            "False Positives": 2,
+            "False Negatives": 4,
+            "True Positives": 1639,
+            "True Negatives": 1270879
+        },
+        {
+            "Threshold": 0.3,
+            "Precision": 0.999390243902439,
+            "Recall": 0.9975654290931223,
+            "F1 Score": 0.9984770027413951,
+            "False Positives": 1,
+            "False Negatives": 4,
+            "True Positives": 1639,
+            "True Negatives": 1270880
+        },
+        {
+            "Threshold": 0.4,
+            "Precision": 1.0,
+            "Recall": 0.9975654290931223,
+            "F1 Score": 0.9987812309567337,
+            "False Positives": 0,
+            "False Negatives": 4,
+            "True Positives": 1639,
+            "True Negatives": 1270881
+        },
+        {
+            "Threshold": 0.5,
+            "Precision": 1.0,
+            "Recall": 0.9975654290931223,
+            "F1 Score": 0.9987812309567337,
+            "False Positives": 0,
+            "False Negatives": 4,
+            "True Positives": 1639,
+            "True Negatives": 1270881
+        },
+        {
+            "Threshold": 0.6,
+            "Precision": 1.0,
+            "Recall": 0.9975654290931223,
+            "F1 Score": 0.9987812309567337,
+            "False Positives": 0,
+            "False Negatives": 4,
+            "True Positives": 1639,
+            "True Negatives": 1270881
+        },
+        {
+            "Threshold": 0.7,
+            "Precision": 1.0,
+            "Recall": 0.9975654290931223,
+            "F1 Score": 0.9987812309567337,
+            "False Positives": 0,
+            "False Negatives": 4,
+            "True Positives": 1639,
+            "True Negatives": 1270881
+        },
+        {
+            "Threshold": 0.8,
+            "Precision": 1.0,
+            "Recall": 0.9975654290931223,
+            "F1 Score": 0.9987812309567337,
+            "False Positives": 0,
+            "False Negatives": 4,
+            "True Positives": 1639,
+            "True Negatives": 1270881
+        }
+    ]
 }

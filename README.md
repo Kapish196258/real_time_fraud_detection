@@ -1,43 +1,48 @@
 # Real-Time Financial Fraud Detection Pipeline
 
-The goal of this project is to build a real-time financial fraud detection pipeline that can process transaction data, identify suspicious activity, and support fraud monitoring using data engineering and machine learning concepts.
+The goal of this project is to build a real-time financial fraud detection pipeline that processes financial transactions, detects fraudulent activity using machine learning, and supports real-time fraud monitoring through streaming technologies.
 
-This project combines data engineering, machine learning, and real-time streaming technologies to simulate and detect fraudulent financial transactions using the PaySim dataset.
+The project combines **Data Engineering**, **Machine Learning**, **Apache Kafka**, **MongoDB**, and **Docker** to simulate an end-to-end fraud detection system using the PaySim dataset.
 
 ---
 
 # Project Goal
 
-The main goal of this project is to detect potentially fraudulent financial transactions using a structured data pipeline.
+The primary objective of this project is to detect fraudulent financial transactions using a scalable real-time data pipeline.
 
 The project includes:
 
-- Data ingestion
-- Data cleaning and preprocessing
+- Data Ingestion
+- Data Cleaning and Preprocessing
 - Exploratory Data Analysis (EDA)
-- Feature engineering
-- Fraud detection model training
-- Real-time transaction simulation
-- Streaming-based processing
-- Fraud alert storage
-- Monitoring and dashboarding
-- Final documentation
+- Feature Engineering
+- Machine Learning Model Training
+- Real-Time Transaction Streaming
+- Kafka-Based Processing
+- Fraud Prediction
+- MongoDB Alert Storage
+- Monitoring & Dashboarding
+- Final Documentation
 
 ---
 
 # Dataset
 
-The project uses the **PaySim Synthetic Dataset for Mobile Money Transactions**.
+The project uses the **PaySim Synthetic Financial Dataset** for Mobile Money Transactions.
 
-The dataset contains simulated financial transactions and includes:
+The dataset contains:
 
-- Transaction type
-- Transaction amount
-- Account balances
-- Fraud labels (`isFraud`)
-- Flagged fraud transactions
+- Transaction Type
+- Transaction Amount
+- Sender & Receiver Account Balances
+- Fraud Labels (`isFraud`)
+- System Fraud Flags (`isFlaggedFraud`)
 
-> **Note:** The raw dataset is not stored in this repository due to its large size.
+> **Note:** The dataset is not stored in this repository because of its large size. Each contributor should download it locally and place it inside:
+
+```text
+data/raw/paysim_transactions.csv
+```
 
 ---
 
@@ -48,9 +53,9 @@ The dataset contains simulated financial transactions and includes:
 - NumPy
 - Scikit-learn
 - Apache Kafka
+- Kafka UI
 - MongoDB
 - Mongo Express
-- Kafka UI
 - Docker & Docker Compose
 - Git & GitHub
 
@@ -58,21 +63,31 @@ The dataset contains simulated financial transactions and includes:
 
 # Current Project Status
 
-Current progress includes:
+The project has successfully completed the offline data preparation and machine learning stages.
 
-- Repository initialized with a structured project layout
-- Initial dataset understanding completed
+## Completed Work
+
+- Project repository initialized
+- Folder structure created
+- Dataset understanding completed
 - Exploratory Data Analysis (EDA) completed
 - Data cleaning and validation completed
-- Feature engineering completed
-- Docker infrastructure configured
-- Apache Kafka configured using Docker Compose
-- Kafka UI configured for topic monitoring
-- MongoDB configured for storing processed transactions
-- Mongo Express configured for database management
-- Kafka topic `transactions` created with **3 partitions**
-- Kafka producer implemented for transaction streaming
-- Development environment synchronized using Git
+- Feature engineering notebook completed
+- Feature engineering pipeline created
+- Processed dataset generated
+- Docker Compose infrastructure configured
+- Apache Kafka configured
+- Kafka UI configured
+- MongoDB configured
+- Mongo Express configured
+- Kafka topic `transactions` created
+- Python Kafka Producer implemented
+- Transaction streaming tested successfully
+- Model Training Notebook completed
+- Model Training Pipeline Script completed
+- Four machine learning models trained and compared
+- Final Random Forest model selected
+- Model Training Report added
 
 ---
 
@@ -91,7 +106,7 @@ docker compose -f docker/docker-compose.yml up -d
 | Kafka UI | http://localhost:8080 |
 | Mongo Express | http://localhost:8081 |
 
-Ensure Docker Desktop is running before starting the containers.
+Make sure **Docker Desktop** is running before executing the command.
 
 ---
 
@@ -99,6 +114,12 @@ Ensure Docker Desktop is running before starting the containers.
 
 ```text
 PaySim Dataset
+       │
+       ▼
+Feature Engineering
+       │
+       ▼
+Processed Dataset
        │
        ▼
 Python Kafka Producer
@@ -110,48 +131,34 @@ Kafka Topic (transactions)
 Kafka Consumer
        │
        ▼
+Fraud Prediction Model
+       │
+       ▼
 MongoDB
        │
        ▼
-Fraud Detection Pipeline
+Dashboard / Monitoring
 ```
 
 ---
 
-# Current Project Progress
+# Machine Learning Models
 
-The project has successfully completed the offline data preparation and model training stages.
+The following models were trained and evaluated:
 
-## Completed Work
+- Logistic Regression
+- Decision Tree
+- Random Forest
+- HistGradientBoostingClassifier
 
-- Project folder structure created
-- PaySim dataset added locally inside `data/raw/`
-- Data understanding notebook completed
-- Exploratory Data Analysis (EDA) completed
-- Data cleaning and validation notebook completed
-- Feature engineering notebook completed
-- Processed dataset generated locally
-- Docker Compose setup completed for Kafka, Kafka UI, MongoDB, and Mongo Express
-- Kafka topic `transactions` created
-- Python Kafka producer created for streaming PaySim transactions
-- Model training notebook completed
-- Four machine learning models trained and compared:
-  - Logistic Regression
-  - Decision Tree
-  - Random Forest
-  - HistGradientBoostingClassifier
-- Final model selected: **Random Forest**
-- Model training pipeline script added:
-  - `src/models/train_model.py`
+## Final Selected Model
 
----
+**Random Forest**
 
-# Final Model Result
-
-The final selected model is **Random Forest** because it provides the best balance between precision, recall, F1-score, false positives, and false negatives.
+### Performance
 
 | Metric | Value |
-|--------|-------:|
+|---------|--------:|
 | Accuracy | 0.999997 |
 | Precision | 1.000000 |
 | Recall | 0.997565 |
@@ -161,25 +168,27 @@ The final selected model is **Random Forest** because it provides the best balan
 | True Positives | 1639 |
 | True Negatives | 1270881 |
 
+Random Forest achieved the best overall balance between precision, recall, F1-score, and false negatives, making it the most suitable model for fraud detection.
+
 ---
 
 # Important Note
 
 Large generated files are **not pushed to GitHub**.
 
-Each team member should generate these files locally after cloning or pulling the repository.
+Each contributor should generate them locally by running:
 
 ```bash
 python src/features/feature_engineering.py
 python src/models/train_model.py
 ```
 
-These commands will generate:
+These scripts generate:
 
-- Processed dataset
-- Trained Random Forest model
-- Model metadata
-- Feature list
+- Processed Dataset
+- Trained Random Forest Model
+- Model Feature List
+- Model Metadata
 
 ---
 
@@ -216,9 +225,13 @@ real_time_fraud_detection/
 ├── dashboard/
 │
 ├── reports/
+│   └── model_training.md
 │
 ├── models/
 │   └── saved_model/
+│       ├── fraud_detection_model.pkl
+│       ├── model_features.pkl
+│       └── model_metadata.json
 │
 ├── README.md
 ├── requirements.txt
@@ -229,56 +242,68 @@ real_time_fraud_detection/
 
 # Folder Purpose
 
-- `data/raw` → Original PaySim dataset
-- `data/processed` → Feature-engineered dataset
-- `notebooks` → Data analysis and machine learning notebooks
-- `src/data_ingestion` → Data loading scripts
-- `src/preprocessing` → Data preprocessing scripts
-- `src/features` → Feature engineering pipeline
-- `src/models` → Model training scripts
-- `src/streaming` → Kafka producer and streaming logic
-- `src/database` → MongoDB connection and storage logic
-- `src/api` → Future REST API implementation
-- `dashboard` → Monitoring dashboard resources
-- `reports` → Final documentation and reports
-- `models/saved_model` → Saved machine learning models and metadata
+| Folder | Purpose |
+|---------|----------|
+| `data/raw` | Stores the original PaySim dataset |
+| `data/processed` | Stores the processed dataset |
+| `notebooks` | Jupyter notebooks for project development |
+| `src/data_ingestion` | Data loading scripts |
+| `src/preprocessing` | Data preprocessing scripts |
+| `src/features` | Feature engineering pipeline |
+| `src/models` | Model training scripts |
+| `src/streaming` | Kafka producer and streaming logic |
+| `src/database` | MongoDB integration |
+| `src/api` | Future REST API implementation |
+| `dashboard` | Dashboard resources |
+| `reports` | Project reports and documentation |
+| `models/saved_model` | Trained model and metadata |
+
+---
+
+# Project Reports
+
+The project documentation is available inside the **reports** folder.
+
+Current report:
+
+- `reports/model_training.md` — Complete documentation of the model training process, feature engineering summary, model comparison, evaluation metrics, confusion matrix, final Random Forest selection, and saved model artifacts.
 
 ---
 
 # Next Steps
 
-The next phase of the project focuses on real-time fraud prediction.
+The next phase focuses on real-time fraud prediction.
 
-Upcoming tasks include:
+Upcoming tasks:
 
 1. Build the Kafka Consumer
 2. Load the trained Random Forest model
-3. Predict fraud in real time
+3. Perform real-time fraud prediction
 4. Store fraud alerts in MongoDB
-5. Build REST APIs using FastAPI
-6. Develop monitoring dashboards
+5. Develop REST APIs using FastAPI
+6. Build monitoring dashboards
 7. Integrate Grafana and Prometheus
 8. Perform end-to-end testing
-9. Complete deployment and project documentation
+9. Complete deployment and documentation
 
 ---
 
 # Team Workflow
 
-Before starting new work:
+Before starting any work:
 
 ```bash
 git pull origin main
 ```
 
-If required, regenerate the local datasets and trained model:
+Generate local files if required:
 
 ```bash
 python src/features/feature_engineering.py
 python src/models/train_model.py
 ```
 
-Always commit and push your completed work:
+Commit and push changes:
 
 ```bash
 git add .

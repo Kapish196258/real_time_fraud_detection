@@ -1,0 +1,12 @@
+"_id","test","message","created_at","transaction_id","transaction_type","amount","nameOrig","nameDest","actual_isFraud","prediction","fraud_probability","threshold","model_used","kafka_partition","kafka_offset","alert_status"
+"ObjectId(""6a48eb97d6988aa63216c6dd"")",true,"MongoDB connected successfully","2026-07-04T11:16:39.618Z",,,,,,,,,,,,,
+"ObjectId(""6a4cbf5dcbb2a14b8f18b191"")",,,"2026-07-07T08:57:01.654Z",4,"CASH_OUT",181,"C840083671","C38997010",1,1,0.9866666666666667,0.5,"RandomForestClassifier",1,0,"OPEN"
+"ObjectId(""6a4cbf66cbb2a14b8f18b1e2"")",,,"2026-07-07T08:57:10.581Z",3,"TRANSFER",181,"C1305486145","C553264065",1,1,1,0.5,"RandomForestClassifier",2,1,"OPEN"
+"ObjectId(""6a4e27c6f021d3ef23851edd"")",,,"2026-07-08T10:34:46.519Z",4,"CASH_OUT",181,"C840083671","C38997010",1,1,0.9866666666666667,0.5,"RandomForestClassifier",1,0,"OPEN"
+"ObjectId(""6a4e27caf021d3ef23851eff"")",,,"2026-07-08T10:34:50.720Z",4,"CASH_OUT",181,"C840083671","C38997010",1,1,0.9866666666666667,0.5,"RandomForestClassifier",1,33,"OPEN"
+"ObjectId(""6a4e27cef021d3ef23851f21"")",,,"2026-07-08T10:34:54.738Z",4,"CASH_OUT",181,"C840083671","C38997010",1,1,0.9866666666666667,0.5,"RandomForestClassifier",1,66,"OPEN"
+"ObjectId(""6a4e27d3f021d3ef23851f43"")",,,"2026-07-08T10:34:59.227Z",4,"CASH_OUT",181,"C840083671","C38997010",1,1,0.9866666666666667,0.5,"RandomForestClassifier",1,99,"OPEN"
+"ObjectId(""6a4e27daf021d3ef23851f7b"")",,,"2026-07-08T10:35:06.198Z",3,"TRANSFER",181,"C1305486145","C553264065",1,1,1,0.5,"RandomForestClassifier",2,1,"OPEN"
+"ObjectId(""6a4e27dcf021d3ef23851f91"")",,,"2026-07-08T10:35:08.642Z",3,"TRANSFER",181,"C1305486145","C553264065",1,1,1,0.5,"RandomForestClassifier",2,22,"OPEN"
+"ObjectId(""6a4e27dff021d3ef23851fa7"")",,,"2026-07-08T10:35:11.277Z",3,"TRANSFER",181,"C1305486145","C553264065",1,1,1,0.5,"RandomForestClassifier",2,43,"OPEN"
+"ObjectId(""6a4e27e1f021d3ef23851fbd"")",,,"2026-07-08T10:35:13.810Z",3,"TRANSFER",181,"C1305486145","C553264065",1,1,1,0.5,"RandomForestClassifier",2,64,"OPEN"

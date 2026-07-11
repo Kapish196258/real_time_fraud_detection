@@ -1,13 +1,35 @@
+# Python virtual environments
 venv/
 .venv/
+
+# Python cache files
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# Environment variables and secrets
 .env
+
+# Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 
+# Project datasets
 data/raw/*.csv
 data/processed/*.csv
+
+# Generated prediction files
+data/predicted/*.csv
+
+# Saved machine-learning models
 models/saved_model/*.pkl
 
+# Spark Structured Streaming checkpoints
+checkpoints/
+
+# Logs
 *.log
+
+# Operating-system files
 .DS_Store
+Thumbs.db

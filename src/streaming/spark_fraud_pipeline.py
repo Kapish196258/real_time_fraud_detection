@@ -1,15 +1,19 @@
-"""Spark Structured Streaming fraud prediction pipeline.
+"""Spark Structured Streaming fraud prediction and MongoDB pipeline.
 
-Current stage:
-1. Read PaySim transactions from Kafka.
-2. Parse Kafka JSON into structured Spark columns.
-3. Process every micro-batch using foreachBatch().
-4. Reuse the existing predict_fraud.py helper.
-5. Generate model prediction and fraud probability.
-6. Compare model predictions with the original PaySim fraud label.
-7. Display batch-level prediction and performance metrics.
+Pipeline stages:
 
-MongoDB storage will be added only after this stage is validated.
+1. Read PaySim transaction events from Kafka.
+2. Parse Kafka JSON using an explicit Spark schema.
+3. Process every Spark micro-batch with foreachBatch().
+4. Reuse the existing Random Forest prediction helper.
+5. Generate fraud predictions and probabilities.
+6. Calculate batch-level validation and performance metrics.
+7. Upsert all predictions into MongoDB prediction_history.
+8. Upsert predicted fraud into MongoDB fraud_alerts.
+
+Run this file as a module from the repository root:
+
+    python -m src.streaming.spark_fraud_pipeline --reset-checkpoint
 """
 
 from __future__ import annotations
@@ -33,10 +37,12 @@ from pyspark.sql.types import (
     StructType,
 )
 
+from src.database.connection import (
+    close_mongo_client,
+    save_prediction_batch,
+    test_connection,
+)
 
-# ---------------------------------------------------------------------------
-# Project paths
-# ---------------------------------------------------------------------------
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 
@@ -57,10 +63,6 @@ SPARK_KAFKA_PACKAGE = (
 
 MODEL_NAME = "RandomForestClassifier"
 
-
-# ---------------------------------------------------------------------------
-# Kafka transaction schema
-# ---------------------------------------------------------------------------
 
 TRANSACTION_SCHEMA = StructType(
     [
@@ -133,17 +135,13 @@ TRANSACTION_SCHEMA = StructType(
 )
 
 
-# ---------------------------------------------------------------------------
-# Command-line arguments
-# ---------------------------------------------------------------------------
-
 def parse_arguments() -> argparse.Namespace:
     """Read command-line options."""
 
     parser = argparse.ArgumentParser(
         description=(
-            "Run Spark Structured Streaming "
-            "fraud prediction pipeline."
+            "Run the Spark fraud prediction "
+            "and MongoDB persistence pipeline."
         )
     )
 
@@ -151,26 +149,19 @@ def parse_arguments() -> argparse.Namespace:
         "--reset-checkpoint",
         action="store_true",
         help=(
-            "Delete the current Spark checkpoint "
-            "before starting a clean test."
+            "Delete the existing Spark checkpoint "
+            "before starting."
         ),
     )
 
     return parser.parse_args()
 
 
-# ---------------------------------------------------------------------------
-# Existing prediction helper integration
-# ---------------------------------------------------------------------------
-
-def load_prediction_function() -> Callable[[dict[str, Any]], dict[str, Any]]:
-    """Load the prediction function from src.models.predict_fraud.
-
-    The project already contains reusable prediction logic in
-    src/models/predict_fraud.py. Reusing that helper prevents the Spark
-    pipeline from creating a second and possibly inconsistent feature
-    engineering implementation.
-    """
+def load_prediction_function() -> Callable[
+    [dict[str, Any]],
+    dict[str, Any],
+]:
+    """Load the existing reusable prediction helper."""
 
     module = importlib.import_module(
         "src.models.predict_fraud"
@@ -193,13 +184,14 @@ def load_prediction_function() -> Callable[[dict[str, Any]], dict[str, Any]]:
         if callable(function):
             print(
                 "Prediction helper : "
-                f"src.models.predict_fraud.{function_name}"
+                f"src.models.predict_fraud."
+                f"{function_name}"
             )
 
             return function
 
     raise AttributeError(
-        "No supported prediction function was found inside "
+        "No supported prediction function was found in "
         "src/models/predict_fraud.py. Expected one of: "
         + ", ".join(possible_function_names)
     )
@@ -208,19 +200,13 @@ def load_prediction_function() -> Callable[[dict[str, Any]], dict[str, Any]]:
 PREDICT_TRANSACTION = load_prediction_function()
 
 
-# ---------------------------------------------------------------------------
-# Checkpoint handling
-# ---------------------------------------------------------------------------
-
 def prepare_checkpoint_directory(
     reset_checkpoint: bool,
 ) -> None:
-    """Prepare Spark checkpoint storage."""
+    """Prepare the Spark checkpoint directory."""
 
     if reset_checkpoint and CHECKPOINT_DIR.exists():
-        shutil.rmtree(
-            CHECKPOINT_DIR
-        )
+        shutil.rmtree(CHECKPOINT_DIR)
 
         print(
             "Old checkpoint removed:",
@@ -238,20 +224,27 @@ def prepare_checkpoint_directory(
     )
 
 
-# ---------------------------------------------------------------------------
-# Spark session and Kafka stream
-# ---------------------------------------------------------------------------
-
 def create_spark_session() -> SparkSession:
     """Create the local Spark session."""
 
     spark = (
         SparkSession.builder
-        .appName("RealTimeFraudPredictionPipeline")
+        .appName(
+            "RealTimeFraudPredictionMongoPipeline"
+        )
         .master("local[*]")
-        .config("spark.jars.packages", SPARK_KAFKA_PACKAGE)
-        .config("spark.sql.shuffle.partitions", "4")
-        .config("spark.sql.adaptive.enabled", "false")
+        .config(
+            "spark.jars.packages",
+            SPARK_KAFKA_PACKAGE,
+        )
+        .config(
+            "spark.sql.shuffle.partitions",
+            "4",
+        )
+        .config(
+            "spark.sql.adaptive.enabled",
+            "false",
+        )
         .getOrCreate()
     )
 
@@ -267,9 +260,7 @@ def create_kafka_stream(
 
     return (
         spark.readStream
-        .format(
-            "kafka"
-        )
+        .format("kafka")
         .option(
             "kafka.bootstrap.servers",
             KAFKA_BOOTSTRAP_SERVER,
@@ -293,7 +284,7 @@ def create_kafka_stream(
 def parse_transaction_stream(
     kafka_stream_df: DataFrame,
 ) -> DataFrame:
-    """Parse Kafka JSON values into transaction columns."""
+    """Parse Kafka JSON values into columns."""
 
     return (
         kafka_stream_df
@@ -308,26 +299,17 @@ def parse_transaction_stream(
                 TRANSACTION_SCHEMA,
             ).alias("transaction")
         )
-        .select(
-            "transaction.*"
-        )
+        .select("transaction.*")
     )
 
-
-# ---------------------------------------------------------------------------
-# Prediction result normalization
-# ---------------------------------------------------------------------------
 
 def normalize_prediction_result(
     prediction_result: Any,
     transaction: dict[str, Any],
 ) -> dict[str, Any]:
-    """Convert prediction-helper output to one consistent format."""
+    """Convert prediction output into one database-ready format."""
 
-    if not isinstance(
-        prediction_result,
-        dict,
-    ):
+    if not isinstance(prediction_result, dict):
         raise TypeError(
             "The prediction helper must return a dictionary."
         )
@@ -338,9 +320,7 @@ def normalize_prediction_result(
 
     fraud_probability = prediction_result.get(
         "fraud_probability",
-        prediction_result.get(
-            "probability"
-        ),
+        prediction_result.get("probability"),
     )
 
     threshold = prediction_result.get(
@@ -355,56 +335,66 @@ def normalize_prediction_result(
 
     if prediction is None:
         raise ValueError(
-            "Prediction result does not contain "
-            "the 'prediction' field."
+            "Prediction output does not contain prediction."
         )
 
     if fraud_probability is None:
         raise ValueError(
-            "Prediction result does not contain "
-            "'fraud_probability'."
+            "Prediction output does not contain "
+            "fraud_probability."
         )
 
     return {
         "transaction_id": int(
             transaction["transaction_id"]
         ),
-        "type": transaction["type"],
+        "step": int(
+            transaction.get("step") or 0
+        ),
+        "type": transaction.get("type"),
         "amount": float(
-            transaction["amount"]
+            transaction.get("amount") or 0.0
+        ),
+        "nameOrig": transaction.get(
+            "nameOrig"
+        ),
+        "oldbalanceOrg": float(
+            transaction.get("oldbalanceOrg") or 0.0
+        ),
+        "newbalanceOrig": float(
+            transaction.get("newbalanceOrig") or 0.0
+        ),
+        "nameDest": transaction.get(
+            "nameDest"
+        ),
+        "oldbalanceDest": float(
+            transaction.get("oldbalanceDest") or 0.0
+        ),
+        "newbalanceDest": float(
+            transaction.get("newbalanceDest") or 0.0
         ),
         "actual_isFraud": int(
-            transaction.get(
-                "isFraud",
-                0,
-            )
+            transaction.get("isFraud") or 0
         ),
-        "prediction": int(
-            prediction
+        "isFlaggedFraud": int(
+            transaction.get("isFlaggedFraud") or 0
         ),
+        "prediction": int(prediction),
         "fraud_probability": float(
             fraud_probability
         ),
-        "threshold": float(
-            threshold
-        ),
-        "model_used": str(
-            model_used
-        ),
+        "threshold": float(threshold),
+        "model_used": str(model_used),
         "stream_timestamp": transaction.get(
             "stream_timestamp"
         ),
     }
 
 
-# ---------------------------------------------------------------------------
-# Console table
-# ---------------------------------------------------------------------------
-
 def print_prediction_table(
     prediction_records: list[dict[str, Any]],
 ) -> None:
-    """Display prediction results in a readable table."""
+    """Display prediction results."""
 
     header = (
         f"{'ID':<6}"
@@ -429,14 +419,10 @@ def print_prediction_table(
         )
 
 
-# ---------------------------------------------------------------------------
-# Batch metrics
-# ---------------------------------------------------------------------------
-
 def calculate_prediction_metrics(
     prediction_records: list[dict[str, Any]],
 ) -> dict[str, int]:
-    """Calculate validation metrics for one micro-batch."""
+    """Calculate confusion-matrix values."""
 
     true_positive = 0
     true_negative = 0
@@ -444,13 +430,8 @@ def calculate_prediction_metrics(
     false_negative = 0
 
     for record in prediction_records:
-        actual = record[
-            "actual_isFraud"
-        ]
-
-        predicted = record[
-            "prediction"
-        ]
+        actual = record["actual_isFraud"]
+        predicted = record["prediction"]
 
         if actual == 1 and predicted == 1:
             true_positive += 1
@@ -472,18 +453,13 @@ def calculate_prediction_metrics(
     }
 
 
-# ---------------------------------------------------------------------------
-# Spark foreachBatch processing
-# ---------------------------------------------------------------------------
-
 def process_batch(
     batch_df: DataFrame,
     batch_id: int,
 ) -> None:
-    """Run model prediction for one Spark micro-batch."""
+    """Predict and persist one Spark micro-batch."""
 
     start_time = perf_counter()
-
     cached_batch_df = batch_df.cache()
 
     try:
@@ -524,9 +500,7 @@ def process_batch(
 
         transaction_rows = (
             cached_batch_df
-            .orderBy(
-                "transaction_id"
-            )
+            .orderBy("transaction_id")
             .collect()
         )
 
@@ -592,6 +566,11 @@ def process_batch(
             prediction_records
         )
 
+        mongo_summary = save_prediction_batch(
+            prediction_records=prediction_records,
+            spark_batch_id=batch_id,
+        )
+
         processing_seconds = (
             perf_counter() - start_time
         )
@@ -636,6 +615,45 @@ def process_batch(
             "FALSE NEGATIVES         :",
             metrics["false_negative"],
         )
+
+        print("\nMongoDB persistence")
+        print(
+            "PREDICTION OPERATIONS   :",
+            mongo_summary[
+                "prediction_operations"
+            ],
+        )
+        print(
+            "PREDICTION INSERTS      :",
+            mongo_summary[
+                "prediction_upserts"
+            ],
+        )
+        print(
+            "PREDICTION MATCHES      :",
+            mongo_summary[
+                "prediction_matches"
+            ],
+        )
+        print(
+            "FRAUD ALERT OPERATIONS  :",
+            mongo_summary[
+                "alert_operations"
+            ],
+        )
+        print(
+            "FRAUD ALERT INSERTS     :",
+            mongo_summary[
+                "alert_upserts"
+            ],
+        )
+        print(
+            "FRAUD ALERT MATCHES     :",
+            mongo_summary[
+                "alert_matches"
+            ],
+        )
+
         print(
             "PROCESSING TIME         : "
             f"{processing_seconds:.4f} seconds"
@@ -667,12 +685,8 @@ def process_batch(
         cached_batch_df.unpersist()
 
 
-# ---------------------------------------------------------------------------
-# Main application
-# ---------------------------------------------------------------------------
-
 def main() -> None:
-    """Start the Spark fraud prediction stream."""
+    """Start the Spark prediction and MongoDB stream."""
 
     args = parse_arguments()
 
@@ -684,6 +698,8 @@ def main() -> None:
     query = None
 
     try:
+        test_connection()
+
         spark = create_spark_session()
 
         kafka_stream_df = create_kafka_stream(
@@ -715,7 +731,15 @@ def main() -> None:
             MODEL_NAME,
         )
         print(
-            "MongoDB storage    : Not enabled in this stage"
+            "MongoDB storage    : Enabled"
+        )
+        print(
+            "Prediction history : "
+            "fraud_detection_db.prediction_history"
+        )
+        print(
+            "Fraud alerts       : "
+            "fraud_detection_db.fraud_alerts"
         )
         print(
             "Waiting for transactions..."
@@ -727,9 +751,7 @@ def main() -> None:
         query = (
             transaction_stream_df
             .writeStream
-            .foreachBatch(
-                process_batch
-            )
+            .foreachBatch(process_batch)
             .option(
                 "checkpointLocation",
                 str(CHECKPOINT_DIR),
@@ -758,9 +780,9 @@ def main() -> None:
         if spark is not None:
             spark.stop()
 
-        print(
-            "Spark session stopped."
-        )
+        close_mongo_client()
+
+        print("Spark session stopped.")
 
 
 if __name__ == "__main__":

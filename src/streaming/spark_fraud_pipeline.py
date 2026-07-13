@@ -247,30 +247,15 @@ def create_spark_session() -> SparkSession:
 
     spark = (
         SparkSession.builder
-        .appName(
-            "RealTimeFraudPredictionPipeline"
-        )
-        .master(
-            "local[*]"
-        )
-        .config(
-            "spark.jars.packages",
-            SPARK_KAFKA_PACKAGE,
-        )
-        .config(
-            "spark.sql.shuffle.partitions",
-            "4",
-        )
-        .config(
-            "spark.sql.adaptive.enabled",
-            "false",
-        )
+        .appName("RealTimeFraudPredictionPipeline")
+        .master("local[*]")
+        .config("spark.jars.packages", SPARK_KAFKA_PACKAGE)
+        .config("spark.sql.shuffle.partitions", "4")
+        .config("spark.sql.adaptive.enabled", "false")
         .getOrCreate()
     )
 
-    spark.sparkContext.setLogLevel(
-        "WARN"
-    )
+    spark.sparkContext.setLogLevel("WARN")
 
     return spark
 

@@ -1,4 +1,4 @@
-"""Spark Structured Streaming fraud prediction and MongoDB pipeline.
+"""Spark Structured Streaming fraud prediction, MongoDB and monitoring pipeline.
 
 Pipeline stages:
 
@@ -10,10 +10,15 @@ Pipeline stages:
 6. Calculate batch-level validation and performance metrics.
 7. Upsert all predictions into MongoDB prediction_history.
 8. Upsert predicted fraud into MongoDB fraud_alerts.
+9. Export operational metrics through Prometheus.
 
 Run this file as a module from the repository root:
 
     python -m src.streaming.spark_fraud_pipeline --reset-checkpoint
+
+Prometheus metrics endpoint:
+
+    http://localhost:8000/metrics
 """
 
 from __future__ import annotations
@@ -42,6 +47,12 @@ from src.database.connection import (
     save_prediction_batch,
     test_connection,
 )
+from src.monitoring.metrics import (
+    record_batch_failure,
+    record_completed_batch,
+    record_empty_batch,
+    start_metrics_server,
+)
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
@@ -62,6 +73,9 @@ SPARK_KAFKA_PACKAGE = (
 )
 
 MODEL_NAME = "RandomForestClassifier"
+
+PROMETHEUS_HOST = "0.0.0.0"
+PROMETHEUS_PORT = 8000
 
 
 TRANSACTION_SCHEMA = StructType(
@@ -140,8 +154,8 @@ def parse_arguments() -> argparse.Namespace:
 
     parser = argparse.ArgumentParser(
         description=(
-            "Run the Spark fraud prediction "
-            "and MongoDB persistence pipeline."
+            "Run the Spark fraud prediction, MongoDB persistence "
+            "and Prometheus monitoring pipeline."
         )
     )
 
@@ -230,7 +244,7 @@ def create_spark_session() -> SparkSession:
     spark = (
         SparkSession.builder
         .appName(
-            "RealTimeFraudPredictionMongoPipeline"
+            "RealTimeFraudPredictionMonitoringPipeline"
         )
         .master("local[*]")
         .config(
@@ -284,7 +298,7 @@ def create_kafka_stream(
 def parse_transaction_stream(
     kafka_stream_df: DataFrame,
 ) -> DataFrame:
-    """Parse Kafka JSON values into columns."""
+    """Parse Kafka JSON values into transaction columns."""
 
     return (
         kafka_stream_df
@@ -394,7 +408,11 @@ def normalize_prediction_result(
 def print_prediction_table(
     prediction_records: list[dict[str, Any]],
 ) -> None:
-    """Display prediction results."""
+    """Display prediction results in the terminal."""
+
+    if not prediction_records:
+        print("\nNo successful predictions to display.")
+        return
 
     header = (
         f"{'ID':<6}"
@@ -411,7 +429,7 @@ def print_prediction_table(
     for record in prediction_records:
         print(
             f"{record['transaction_id']:<6}"
-            f"{record['type']:<12}"
+            f"{str(record['type']):<12}"
             f"{record['amount']:>14.2f}"
             f"{record['actual_isFraud']:>10}"
             f"{record['prediction']:>12}"
@@ -457,7 +475,7 @@ def process_batch(
     batch_df: DataFrame,
     batch_id: int,
 ) -> None:
-    """Predict and persist one Spark micro-batch."""
+    """Predict, persist and monitor one Spark micro-batch."""
 
     start_time = perf_counter()
     cached_batch_df = batch_df.cache()
@@ -474,6 +492,10 @@ def process_batch(
         )
 
         if record_count == 0:
+            record_empty_batch(
+                batch_id=batch_id
+            )
+
             print(
                 "BATCH STATUS            : Empty batch"
             )
@@ -558,8 +580,10 @@ def process_batch(
             for record in prediction_records
         )
 
-        metrics = calculate_prediction_metrics(
-            prediction_records
+        prediction_metrics = (
+            calculate_prediction_metrics(
+                prediction_records
+            )
         )
 
         print_prediction_table(
@@ -582,6 +606,18 @@ def process_batch(
             else 0.0
         )
 
+        record_completed_batch(
+            batch_id=batch_id,
+            record_count=record_count,
+            successful_predictions=successful_predictions,
+            failed_predictions=failed_records,
+            predicted_fraud_count=predicted_fraud_count,
+            processing_seconds=processing_seconds,
+            throughput=throughput,
+            prediction_metrics=prediction_metrics,
+            mongo_summary=mongo_summary,
+        )
+
         print("\n" + "-" * 90)
         print(
             "SUCCESSFUL PREDICTIONS  :",
@@ -601,19 +637,19 @@ def process_batch(
         )
         print(
             "TRUE POSITIVES          :",
-            metrics["true_positive"],
+            prediction_metrics["true_positive"],
         )
         print(
             "TRUE NEGATIVES          :",
-            metrics["true_negative"],
+            prediction_metrics["true_negative"],
         )
         print(
             "FALSE POSITIVES         :",
-            metrics["false_positive"],
+            prediction_metrics["false_positive"],
         )
         print(
             "FALSE NEGATIVES         :",
-            metrics["false_negative"],
+            prediction_metrics["false_negative"],
         )
 
         print("\nMongoDB persistence")
@@ -654,6 +690,16 @@ def process_batch(
             ],
         )
 
+        print("\nPrometheus monitoring")
+        print(
+            "METRICS RECORDED        : Yes"
+        )
+        print(
+            "METRICS ENDPOINT        : "
+            f"http://localhost:"
+            f"{PROMETHEUS_PORT}/metrics"
+        )
+
         print(
             "PROCESSING TIME         : "
             f"{processing_seconds:.4f} seconds"
@@ -675,18 +721,60 @@ def process_batch(
             )
 
     except Exception as error:
+        record_batch_failure()
+
         print(
             f"Batch {batch_id} failed: {error}",
             file=sys.stderr,
         )
+
         raise
 
     finally:
         cached_batch_df.unpersist()
 
 
+def stop_streaming_query(
+    query: Any,
+) -> None:
+    """Stop the streaming query without masking the original error."""
+
+    if query is None:
+        return
+
+    try:
+        if query.isActive:
+            query.stop()
+
+    except Exception as error:
+        print(
+            "Streaming query cleanup warning:",
+            error,
+            file=sys.stderr,
+        )
+
+
+def stop_spark_session(
+    spark: SparkSession | None,
+) -> None:
+    """Stop Spark without masking an earlier JVM failure."""
+
+    if spark is None:
+        return
+
+    try:
+        spark.stop()
+
+    except Exception as error:
+        print(
+            "Spark cleanup warning:",
+            error,
+            file=sys.stderr,
+        )
+
+
 def main() -> None:
-    """Start the Spark prediction and MongoDB stream."""
+    """Start the complete real-time fraud pipeline."""
 
     args = parse_arguments()
 
@@ -700,6 +788,11 @@ def main() -> None:
     try:
         test_connection()
 
+        start_metrics_server(
+            host=PROMETHEUS_HOST,
+            port=PROMETHEUS_PORT,
+        )
+
         spark = create_spark_session()
 
         kafka_stream_df = create_kafka_stream(
@@ -710,6 +803,17 @@ def main() -> None:
             parse_transaction_stream(
                 kafka_stream_df
             )
+        )
+
+        query = (
+            transaction_stream_df
+            .writeStream
+            .foreachBatch(process_batch)
+            .option(
+                "checkpointLocation",
+                str(CHECKPOINT_DIR),
+            )
+            .start()
         )
 
         print(
@@ -742,21 +846,15 @@ def main() -> None:
             "fraud_detection_db.fraud_alerts"
         )
         print(
+            "Prometheus metrics : "
+            f"http://localhost:"
+            f"{PROMETHEUS_PORT}/metrics"
+        )
+        print(
             "Waiting for transactions..."
         )
         print(
             "Press Ctrl+C to stop.\n"
-        )
-
-        query = (
-            transaction_stream_df
-            .writeStream
-            .foreachBatch(process_batch)
-            .option(
-                "checkpointLocation",
-                str(CHECKPOINT_DIR),
-            )
-            .start()
         )
 
         query.awaitTermination()
@@ -771,15 +869,12 @@ def main() -> None:
             f"\nSpark pipeline failed: {error}",
             file=sys.stderr,
         )
+
         raise
 
     finally:
-        if query is not None and query.isActive:
-            query.stop()
-
-        if spark is not None:
-            spark.stop()
-
+        stop_streaming_query(query)
+        stop_spark_session(spark)
         close_mongo_client()
 
         print("Spark session stopped.")

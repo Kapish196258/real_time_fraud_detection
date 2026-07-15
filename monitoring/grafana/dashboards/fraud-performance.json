@@ -1,0 +1,268 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": [
+    "fraud",
+    "performance",
+    "spark",
+    "mongodb",
+    "prometheus"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "Fraud Pipeline Performance",
+  "uid": "fraud-performance",
+  "version": 1,
+  "weekStart": "",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Latest Batch Size",
+      "type": "stat",
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "fraud-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "fraud_spark_latest_batch_size",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Latest Batch Duration",
+      "type": "stat",
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 4,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "fraud-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "fraud_spark_latest_batch_processing_seconds",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Latest Prediction Throughput",
+      "type": "stat",
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 8,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "fraud-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "fraud_spark_latest_prediction_throughput",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Completed Spark Batches",
+      "type": "stat",
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "fraud-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "fraud_spark_batches_processed_total",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Spark Batch Failures",
+      "type": "stat",
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 16,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "fraud-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "fraud_spark_batch_failures_total",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Prediction Failures",
+      "type": "stat",
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 20,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "fraud-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "fraud_prediction_failures_total",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Batch Processing Duration Over Time",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "fraud-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "fraud_spark_latest_batch_processing_seconds",
+          "instant": false
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Prediction Throughput Over Time",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "fraud-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "fraud_spark_latest_prediction_throughput",
+          "instant": false
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "MongoDB Prediction Operations",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 13
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "fraud-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "fraud_mongodb_prediction_operations_total"
+        },
+        {
+          "refId": "B",
+          "expr": "fraud_mongodb_prediction_inserts_total"
+        },
+        {
+          "refId": "C",
+          "expr": "fraud_mongodb_prediction_matches_total"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "MongoDB Fraud Alert Operations",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 13
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "fraud-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "fraud_mongodb_alert_operations_total"
+        },
+        {
+          "refId": "B",
+          "expr": "fraud_mongodb_alert_inserts_total"
+        },
+        {
+          "refId": "C",
+          "expr": "fraud_mongodb_alert_matches_total"
+        }
+      ]
+    }
+  ]
+}

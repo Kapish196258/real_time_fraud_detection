@@ -176,12 +176,8 @@ real_time_fraud_detection/
 |-- docker/
 |   `-- docker-compose.yml
 |
-|-- docs/
-|   `-- screenshots/
-|       |-- fraud-overview-dashboard.png
-|       |-- fraud-overview-batches.png
-|       |-- fraud-pipeline-performance.png
-|       `-- fraud-model-quality.png
+|-- output_screenshots/
+|   `-- Final validation screenshots
 |
 |-- models/
 |   `-- saved_model/
@@ -465,66 +461,30 @@ Grafana is available at:
 http://localhost:3000
 ```
 
+Three provisioned dashboards provide different views of the streaming system.
+
 ### Fraud Detection Overview
 
-This dashboard provides a high-level view of pipeline activity.
-
-![Fraud Detection Overview](docs/screenshots/fraud-overview-dashboard.png)
-
-The validated dashboard displayed:
-
-- 2,000 processed transactions;
-- 14 fraud predictions in the overview validation run;
-- 0 prediction failures;
-- approximately 8.57 predictions per second;
-- completed and failed Spark batch information.
-
-### Spark Batch Summary
-
-![Spark Batch Summary](docs/screenshots/fraud-overview-batches.png)
-
-The dashboard confirmed:
-
-- completed Spark batches;
-- expected empty initial batches;
-- zero failed Spark batches.
-
-The initial empty batch is normal because Spark starts before the producer
-begins sending Kafka messages.
+The **Fraud Detection Overview** dashboard presents the main operational
+results, including processed transactions, predicted fraud, fraud rate,
+prediction failures, latest throughput, latest batch duration, and Spark batch
+status.
 
 ### Fraud Pipeline Performance
 
-![Fraud Pipeline Performance](docs/screenshots/fraud-pipeline-performance.png)
-
-This dashboard displays:
-
-- Spark batch-processing duration;
-- prediction throughput;
-- MongoDB prediction operations;
-- MongoDB fraud-alert operations;
-- processing and storage trends.
+The **Fraud Pipeline Performance** dashboard focuses on processing efficiency
+and storage activity. It displays Spark batch-processing duration, prediction
+throughput, MongoDB prediction operations, fraud-alert operations, batch
+activity, and failure indicators.
 
 ### Fraud Model Quality
 
-![Fraud Model Quality](docs/screenshots/fraud-model-quality.png)
+The **Fraud Model Quality** dashboard presents true positives, true negatives,
+false positives, false negatives, precision, recall, F1 score, accuracy, actual
+fraud, predicted fraud, and classification outcomes over time.
 
-The validated model-quality batch displayed:
-
-| Metric | Result |
-|---|---:|
-| True positives | 2 |
-| True negatives | 1,997 |
-| False positives | 0 |
-| False negatives | 0 |
-| Precision | 100.00% |
-| Recall | 100.00% |
-| F1 score | 100.00% |
-| Accuracy | 100.00% |
-| Actual fraud | 2 |
-| Predicted fraud | 2 |
-
-These results apply to the validated test range and do not imply that every
-future production workload will produce perfect classification.
+Dashboard screenshots from the final 500-transaction validation run are
+included in the **End-to-End Pipeline Evidence** section.
 
 ---
 
@@ -751,6 +711,107 @@ The final non-empty Spark batch produced:
 
 The complete 2,000-record run was distributed across multiple Spark
 micro-batches.
+
+---
+
+## End-to-End Pipeline Evidence
+
+A final controlled validation run was completed to confirm that the full
+streaming workflow operated correctly from transaction production to dashboard
+monitoring.
+
+The producer command was:
+
+```powershell
+python .\src\streaming\producer.py `
+    --start-row 10000 `
+    --limit 500 `
+    --sleep 0.02
+```
+
+This configuration generated transaction IDs `10001–10500` from a new,
+non-overlapping section of the PaySim dataset.
+
+- `--start-row 10000` skipped the first 10,000 rows and prevented reuse of the
+  earlier validation range.
+- `--limit 500` restricted the run to exactly 500 streamed transactions.
+- `--sleep 0.02` introduced a short delay between records to simulate a
+  continuous transaction stream.
+- Deterministic transaction IDs and MongoDB upserts supported repeatable tests
+  without uncontrolled duplicate documents.
+
+Spark Structured Streaming consumed the Kafka messages in micro-batches,
+applied the trained Random Forest classifier, persisted prediction history and
+fraud alerts in MongoDB, and published live operational and classification
+metrics through Prometheus for Grafana visualization.
+
+The validation run produced:
+
+- 500 successful predictions;
+- 4 predicted fraud alerts;
+- 4 true positives;
+- 496 true negatives;
+- 0 false positives;
+- 0 false negatives;
+- 0 prediction failures;
+- 500 MongoDB prediction-history operations;
+- 4 MongoDB fraud-alert operations;
+- 2 completed non-empty Spark batches;
+- 1 expected initial empty batch;
+- 0 failed Spark batches;
+- a latest non-empty batch size of 499;
+- a latest batch-processing duration of approximately 49 seconds;
+- a latest prediction throughput of approximately 10.18 records per second.
+
+The latest batch contained 499 records because Spark divided the complete
+500-message stream across two non-empty micro-batches.
+
+Kafka UI, MongoDB, and Prometheus were also checked during validation. Their
+supporting screenshots are retained in `output_screenshots/`, while the README
+presents only the three final Grafana dashboards to keep the project page clear
+and concise.
+
+### Fraud Detection Overview Dashboard
+
+The Fraud Detection Overview dashboard summarizes processed transactions,
+predicted fraud, fraud rate, prediction failures, throughput, batch duration,
+and Spark batch status.
+
+![Fraud Detection Overview dashboard](output_screenshots/fraud-overview-dashboard.png)
+
+### Fraud Pipeline Performance Dashboard
+
+The Fraud Pipeline Performance dashboard presents Spark processing duration,
+prediction throughput, MongoDB prediction and alert operations, batch activity,
+and pipeline failure indicators.
+
+![Fraud Pipeline Performance dashboard](output_screenshots/fraud-pipeline-performance.png)
+
+### Fraud Model Quality Dashboard
+
+The Fraud Model Quality dashboard presents the confusion-matrix outcomes and
+derived model-quality measures. For this selected 500-transaction range,
+precision, recall, F1 score, and accuracy were all 100%, with four true
+positives, 496 true negatives, and no false positives or false negatives.
+
+![Fraud Model Quality dashboard](output_screenshots/fraud-model-quality.png)
+
+These results apply to the selected validation range. They demonstrate that the
+complete local pipeline operated correctly during the test, but they should not
+be interpreted as guaranteed performance for every future transaction stream.
+
+### Validation Flow
+
+```text
+PaySim dataset
+→ Kafka producer
+→ Kafka transactions topic
+→ Spark Structured Streaming
+→ Random Forest fraud prediction
+→ MongoDB prediction history and fraud alerts
+→ Prometheus application metrics
+→ Grafana operational and model-quality dashboards
+```
 
 ---
 

@@ -1,35 +1,56 @@
 # Real-Time Financial Fraud Detection Pipeline
 
-An end-to-end machine learning and real-time streaming project built with the PaySim financial transaction dataset, Apache Kafka, Spark Structured Streaming, MongoDB, Prometheus, Python, and Docker.
+An end-to-end machine learning and real-time streaming system for detecting
+fraudulent financial transactions using the PaySim dataset, Apache Kafka,
+Spark Structured Streaming, MongoDB, Prometheus, Grafana, Python, and Docker.
 
-The system streams financial transactions through Kafka, applies a trained Random Forest model inside Spark micro-batches, stores predictions and fraud alerts in MongoDB, and exposes live operational metrics for monitoring.
+The system streams financial transactions through Kafka, applies a trained
+Random Forest classifier inside Spark micro-batches, stores prediction results
+and fraud alerts in MongoDB, and exposes operational and model-quality metrics
+through Prometheus and Grafana.
 
-## Architecture
+---
+
+## Project Overview
+
+Financial fraud detection requires more than training a machine learning
+model. A complete system must also receive transactions continuously, score
+them reliably, store the results, expose failures, and make operational and
+model-quality information visible.
+
+This project implements that complete workflow:
 
 ```text
-PaySim CSV Dataset
+PaySim CSV dataset
         |
         v
-Kafka Producer
+Python Kafka producer
         |
         v
-Kafka Topic: transactions
+Kafka topic: transactions
         |
         v
 Spark Structured Streaming
         |
         v
-Random Forest Fraud Prediction
+Feature preparation
         |
-        +----------------------------+
-        |                            |
-        v                            v
-MongoDB                      Prometheus Metrics
+        v
+Random Forest fraud prediction
         |
-        +--> prediction_history
-        |
-        +--> fraud_alerts
+        +-----------------------------+
+        |                             |
+        v                             v
+MongoDB                         Prometheus metrics
+        |                             |
+        +-- prediction_history        v
+        +-- fraud_alerts             Grafana
 ```
+
+The project supports repeatable testing by assigning deterministic transaction
+IDs and allowing the producer to start from a selected dataset row.
+
+---
 
 ## Project Status
 
@@ -37,45 +58,58 @@ MongoDB                      Prometheus Metrics
 |---|---|
 | Data understanding and validation | Completed |
 | Exploratory data analysis | Completed |
+| Data cleaning | Completed |
 | Feature engineering | Completed |
-| Model training and evaluation | Completed |
+| Model training and comparison | Completed |
 | Random Forest model serialization | Completed |
-| Kafka producer and topic setup | Completed |
-| Python Kafka fraud consumer | Completed |
+| Kafka producer | Completed |
+| Kafka consumer | Completed |
+| Producer start-row support | Completed |
+| Producer range validation tests | Completed |
 | Spark Structured Streaming consumer | Completed |
 | Spark fraud-prediction integration | Completed |
-| Spark-to-MongoDB persistence | Completed |
-| MongoDB batch upserts | Completed |
-| Fraud-alert storage | Completed |
+| MongoDB prediction persistence | Completed |
+| MongoDB fraud-alert storage | Completed |
 | Prometheus application metrics | Completed |
-| Prometheus Docker service | Next |
-| Grafana dashboard | Pending |
-| Larger-volume load testing | Pending |
-| Performance optimization | Pending |
-| Final deployment documentation | Pending |
+| Prometheus Docker service | Completed |
+| Grafana Docker service | Completed |
+| Fraud Detection Overview dashboard | Completed |
+| Fraud Pipeline Performance dashboard | Completed |
+| Fraud Model Quality dashboard | Completed |
+| Live 2,000-transaction validation | Completed |
+| Dashboard validation reports | Completed |
+| Final repository documentation | Completed |
+
+---
 
 ## Technology Stack
 
 | Area | Technology |
 |---|---|
-| Language | Python 3.12 |
+| Programming language | Python 3.12 |
 | Dataset | PaySim |
-| Data processing | pandas 3.0.3, NumPy 2.5.0 |
-| Machine learning | scikit-learn 1.9.0 |
-| Streaming | Apache Kafka, kafka-python 3.0.7 |
+| Data processing | pandas, NumPy |
+| Machine learning | scikit-learn |
+| Message streaming | Apache Kafka |
+| Kafka client | kafka-python |
 | Stream processing | PySpark 3.5.1 |
-| Database | MongoDB 7, PyMongo 4.17.0 |
-| Monitoring | prometheus-client 0.25.0 |
+| Database | MongoDB 7 |
+| MongoDB client | PyMongo |
+| Metrics | prometheus-client |
+| Monitoring | Prometheus and Grafana |
 | Infrastructure | Docker Compose |
 | Development environment | Windows, PowerShell, VS Code |
+| Testing | pytest |
 
-The complete Python dependency list is maintained in:
+The complete dependency list is maintained in:
 
 ```text
 requirements.txt
 ```
 
-## Dataset and Model
+---
+
+## Dataset
 
 The project uses the PaySim synthetic financial transaction dataset.
 
@@ -86,7 +120,28 @@ The project uses the PaySim synthetic financial transaction dataset.
 | Non-fraud transactions | 6,354,407 |
 | Fraud rate | 0.1291% |
 
-Fraud occurs only in `TRANSFER` and `CASH_OUT` transactions.
+Fraud occurs only in the following transaction types:
+
+```text
+TRANSFER
+CASH_OUT
+```
+
+Because the dataset is highly imbalanced, accuracy alone is not sufficient for
+evaluating the model. Precision, recall, F1 score, false positives, and false
+negatives are also evaluated.
+
+The dataset must be placed at:
+
+```text
+data/raw/paysim_transactions.csv
+```
+
+The full dataset is not committed to Git because of its size.
+
+---
+
+## Machine Learning Model
 
 The final selected model is a Random Forest classifier.
 
@@ -99,39 +154,247 @@ The final selected model is a Random Forest classifier.
 | False positives | 0 |
 | False negatives | 4 |
 
-Detailed data-analysis and model-evaluation results are available in the reports directory.
+The model was selected after comparing classification results with particular
+attention to false negatives, F1 score, and precision.
 
-## Main Pipeline Components
+A false negative is especially important in fraud detection because it
+represents an actual fraudulent transaction that was incorrectly classified
+as normal.
 
-```text
-src/streaming/producer.py
-```
+---
 
-Reads PaySim transactions, adds a transaction ID and stream timestamp, converts each record to JSON, and sends it to Kafka.
-
-```text
-src/models/predict_fraud.py
-```
-
-Loads the trained model and feature list, prepares one transaction, and returns the fraud prediction and probability.
+## Repository Structure
 
 ```text
-src/streaming/spark_fraud_pipeline.py
+real_time_fraud_detection/
+|
+|-- data/
+|   |-- raw/
+|   |-- processed/
+|   `-- predicted/
+|
+|-- docker/
+|   `-- docker-compose.yml
+|
+|-- docs/
+|   `-- screenshots/
+|       |-- fraud-overview-dashboard.png
+|       |-- fraud-overview-batches.png
+|       |-- fraud-pipeline-performance.png
+|       `-- fraud-model-quality.png
+|
+|-- models/
+|   `-- saved_model/
+|
+|-- monitoring/
+|   `-- grafana/
+|       `-- dashboards/
+|           |-- fraud-overview.json
+|           |-- fraud-performance.json
+|           `-- fraud-model-quality.json
+|
+|-- notebooks/
+|   |-- 01_data_understanding.ipynb
+|   |-- 02_eda_and_data_cleaning.ipynb
+|   |-- 03_feature_engineering.ipynb
+|   `-- 04_model_training.ipynb
+|
+|-- reports/
+|
+|-- src/
+|   |-- database/
+|   |   |-- connection.py
+|   |   `-- mongodb_queries.py
+|   |
+|   |-- features/
+|   |   `-- feature_engineering.py
+|   |
+|   |-- models/
+|   |   |-- predict_fraud.py
+|   |   `-- train_model.py
+|   |
+|   |-- monitoring/
+|   |   |-- __init__.py
+|   |   `-- metrics.py
+|   |
+|   |-- preprocessing/
+|   |   `-- clean_data.py
+|   |
+|   `-- streaming/
+|       |-- consumer.py
+|       |-- producer.py
+|       |-- spark_streaming_consumer.py
+|       `-- spark_fraud_pipeline.py
+|
+|-- tests/
+|   `-- test_producer_ranges.py
+|
+|-- requirements.txt
+`-- README.md
 ```
 
-Consumes Kafka records using Spark Structured Streaming, performs model scoring inside `foreachBatch()`, writes results to MongoDB, and updates Prometheus metrics.
+Runtime directories such as Spark checkpoints, Python cache folders, and test
+cache folders are not part of the project documentation or source code.
+
+---
+
+## File Guide
+
+### Notebooks
+
+#### `notebooks/01_data_understanding.ipynb`
+
+Loads the PaySim dataset and examines its schema, transaction types, class
+distribution, missing values, and general data quality.
+
+#### `notebooks/02_eda_and_data_cleaning.ipynb`
+
+Performs exploratory data analysis, studies fraud patterns, validates balance
+columns, and prepares the cleaned dataset.
+
+#### `notebooks/03_feature_engineering.ipynb`
+
+Creates and evaluates model features such as transaction-type encoding,
+balance differences, amount relationships, and error-based features.
+
+#### `notebooks/04_model_training.ipynb`
+
+Trains and compares machine learning models, evaluates classification metrics,
+and documents the final Random Forest model selection.
+
+### Preprocessing and feature engineering
+
+#### `src/preprocessing/clean_data.py`
+
+Provides reusable data-cleaning logic outside the notebooks.
+
+#### `src/features/feature_engineering.py`
+
+Creates the final model features consistently for training and real-time
+prediction.
+
+### Model files
+
+#### `src/models/train_model.py`
+
+Trains candidate models, compares evaluation metrics, selects the final model,
+and saves the trained estimator and required feature metadata.
+
+#### `src/models/predict_fraud.py`
+
+Loads the saved Random Forest model, prepares an individual transaction, and
+returns its prediction and fraud probability.
+
+### Streaming files
+
+#### `src/streaming/producer.py`
+
+Reads PaySim records in chunks, adds a deterministic transaction ID and stream
+timestamp, converts each transaction to JSON, and sends it to Kafka.
+
+Important producer options include:
 
 ```text
-src/database/connection.py
+--start-row
+--limit
+--sleep
 ```
 
-Manages MongoDB connections, indexes, batch upserts, prediction-history storage, and fraud-alert storage.
+The `--start-row` option allows repeatable, non-overlapping load tests.
+
+#### `src/streaming/consumer.py`
+
+Provides the Python Kafka consumer flow used for initial real-time fraud
+prediction validation.
+
+#### `src/streaming/spark_streaming_consumer.py`
+
+Implements the initial Kafka-to-Spark Structured Streaming consumer and
+micro-batch validation.
+
+#### `src/streaming/spark_fraud_pipeline.py`
+
+Implements the complete production-style streaming path:
 
 ```text
-src/monitoring/metrics.py
+Kafka
+→ Spark Structured Streaming
+→ Random Forest prediction
+→ MongoDB
+→ Prometheus
 ```
 
-Defines Prometheus counters, gauges, and histograms for pipeline monitoring.
+It performs prediction inside `foreachBatch()`, writes prediction history and
+fraud alerts, calculates batch metrics, and records confusion-matrix outcomes.
+
+### Database files
+
+#### `src/database/connection.py`
+
+Manages MongoDB connections, indexes, prediction-history writes, fraud-alert
+writes, and transaction-ID-based batch upserts.
+
+#### `src/database/mongodb_queries.py`
+
+Contains validation and analysis queries for prediction history, fraud alerts,
+false positives, false negatives, and other stored prediction results.
+
+### Monitoring
+
+#### `src/monitoring/metrics.py`
+
+Defines the Prometheus counters, gauges, and histograms used for monitoring:
+
+- processed transactions;
+- predicted fraud alerts;
+- prediction failures;
+- completed Spark batches;
+- empty Spark batches;
+- failed Spark batches;
+- true positives;
+- true negatives;
+- false positives;
+- false negatives;
+- MongoDB prediction operations;
+- MongoDB fraud-alert operations;
+- latest batch size;
+- latest processing duration;
+- latest prediction throughput.
+
+### Grafana dashboards
+
+#### `monitoring/grafana/dashboards/fraud-overview.json`
+
+Defines the **Fraud Detection Overview** dashboard.
+
+It displays the overall transaction count, fraud predictions, fraud rate,
+prediction failures, throughput, batch duration, and Spark batch status.
+
+#### `monitoring/grafana/dashboards/fraud-performance.json`
+
+Defines the **Fraud Pipeline Performance** dashboard.
+
+It displays Spark processing duration, prediction throughput, batch status,
+prediction failures, and MongoDB write operations.
+
+#### `monitoring/grafana/dashboards/fraud-model-quality.json`
+
+Defines the **Fraud Model Quality** dashboard.
+
+It displays true positives, true negatives, false positives, false negatives,
+precision, recall, F1 score, accuracy, actual fraud, predicted fraud, and
+classification outcomes over time.
+
+### Tests
+
+#### `tests/test_producer_ranges.py`
+
+Validates producer row-range logic, deterministic transaction IDs, argument
+handling, and repeatable non-overlapping producer runs.
+
+The current producer test suite contains 17 passing tests.
+
+---
 
 ## MongoDB Storage
 
@@ -148,25 +411,36 @@ prediction_history
 fraud_alerts
 ```
 
-`prediction_history` stores every successfully scored transaction.
+### `prediction_history`
 
-`fraud_alerts` stores transactions where:
+Stores every successfully scored transaction with its transaction ID,
+prediction, fraud probability, actual label, and processing information.
+
+### `fraud_alerts`
+
+Stores transactions where:
 
 ```text
 prediction = 1
 ```
 
-Writes use `transaction_id`-based upserts so repeated processing updates existing documents instead of creating repeated test records.
+MongoDB writes use `transaction_id`-based upserts. Reprocessing an existing
+transaction updates the stored document instead of creating uncontrolled
+duplicates.
+
+---
 
 ## Prometheus Metrics
 
-The Spark process exposes metrics at:
+The Spark process exposes application metrics at:
 
 ```text
 http://localhost:8000/metrics
 ```
 
-Available metrics include:
+Prometheus collects these metrics and makes them available to Grafana.
+
+The metrics include:
 
 - processed transactions;
 - predicted fraud alerts;
@@ -174,113 +448,161 @@ Available metrics include:
 - completed, empty, and failed Spark batches;
 - true positives and true negatives;
 - false positives and false negatives;
-- MongoDB prediction and alert operations;
+- MongoDB prediction operations;
+- MongoDB fraud-alert operations;
 - latest batch size;
-- latest processing duration;
+- latest batch-processing duration;
 - latest prediction throughput;
-- Spark batch-duration histogram.
+- batch-duration histogram.
 
-Prometheus is currently exposed by the application. The Prometheus Docker service and Grafana dashboard are the next implementation stage.
+---
 
-## Project Structure
+## Grafana Dashboards
+
+Grafana is available at:
 
 ```text
-real_time_fraud_detection/
-├── data/
-│   ├── raw/
-│   ├── processed/
-│   └── predicted/
-├── docker/
-│   └── docker-compose.yml
-├── models/
-│   └── saved_model/
-├── notebooks/
-│   ├── 01_data_understanding.ipynb
-│   ├── 02_eda_and_data_cleaning.ipynb
-│   ├── 03_feature_engineering.ipynb
-│   └── 04_model_training.ipynb
-├── reports/
-├── src/
-│   ├── database/
-│   │   └── connection.py
-│   ├── features/
-│   │   └── feature_engineering.py
-│   ├── models/
-│   │   ├── predict_fraud.py
-│   │   └── train_model.py
-│   ├── monitoring/
-│   │   ├── __init__.py
-│   │   └── metrics.py
-│   ├── preprocessing/
-│   │   └── clean_data.py
-│   └── streaming/
-│       ├── consumer.py
-│       ├── producer.py
-│       ├── spark_streaming_consumer.py
-│       └── spark_fraud_pipeline.py
-├── checkpoints/
-├── requirements.txt
-└── README.md
+http://localhost:3000
 ```
 
-## Documentation
+### Fraud Detection Overview
 
-Detailed implementation evidence is kept in `reports/` so the README remains concise.
+This dashboard provides a high-level view of pipeline activity.
+
+![Fraud Detection Overview](docs/screenshots/fraud-overview-dashboard.png)
+
+The validated dashboard displayed:
+
+- 2,000 processed transactions;
+- 14 fraud predictions in the overview validation run;
+- 0 prediction failures;
+- approximately 8.57 predictions per second;
+- completed and failed Spark batch information.
+
+### Spark Batch Summary
+
+![Spark Batch Summary](docs/screenshots/fraud-overview-batches.png)
+
+The dashboard confirmed:
+
+- completed Spark batches;
+- expected empty initial batches;
+- zero failed Spark batches.
+
+The initial empty batch is normal because Spark starts before the producer
+begins sending Kafka messages.
+
+### Fraud Pipeline Performance
+
+![Fraud Pipeline Performance](docs/screenshots/fraud-pipeline-performance.png)
+
+This dashboard displays:
+
+- Spark batch-processing duration;
+- prediction throughput;
+- MongoDB prediction operations;
+- MongoDB fraud-alert operations;
+- processing and storage trends.
+
+### Fraud Model Quality
+
+![Fraud Model Quality](docs/screenshots/fraud-model-quality.png)
+
+The validated model-quality batch displayed:
+
+| Metric | Result |
+|---|---:|
+| True positives | 2 |
+| True negatives | 1,997 |
+| False positives | 0 |
+| False negatives | 0 |
+| Precision | 100.00% |
+| Recall | 100.00% |
+| F1 score | 100.00% |
+| Accuracy | 100.00% |
+| Actual fraud | 2 |
+| Predicted fraud | 2 |
+
+These results apply to the validated test range and do not imply that every
+future production workload will produce perfect classification.
+
+---
+
+## Documentation Reports
+
+Detailed implementation and validation evidence is stored in `reports/`.
 
 | Report | Purpose |
 |---|---|
 | `model_training_report.md` | Model comparison, evaluation metrics, and final model selection |
 | `kafka_streaming_report.md` | Kafka infrastructure, producer, topic, and streaming validation |
-| `mongodb_integration_report.md` | Initial MongoDB connection and persistence implementation |
-| `mongodb_queries.md` | Queries for validating prediction history and fraud alerts |
+| `mongodb_integration_report.md` | MongoDB connection and persistence implementation |
+| `mongodb_queries.md` | Queries for prediction-history and fraud-alert validation |
 | `real_time_prediction_flow.md` | Python Kafka consumer, model prediction, and MongoDB flow |
-| `end_to_end_pipeline_testing.md` | Full Python pipeline validation |
-| `spark_streaming_consumer_report.md` | Kafka-to-Spark consumer setup and micro-batch testing |
-| `spark_fraud_prediction.md` | Random Forest prediction inside the Spark pipeline |
+| `end_to_end_pipeline_testing.md` | Complete Python pipeline testing |
+| `spark_streaming_consumer_report.md` | Kafka-to-Spark consumer and micro-batch testing |
+| `spark_fraud_prediction.md` | Random Forest prediction inside Spark |
 | `spark_mongodb_integration.md` | Spark prediction persistence and fraud-alert validation |
+| `grafana_performance_dashboard_validation.md` | Performance-dashboard and 2,000-record pipeline validation |
+| `grafana_model_quality_dashboard_validation.md` | Model-quality metrics and dashboard validation |
 
-Refer to the relevant report for setup details, test outputs, troubleshooting notes, metrics, and validation evidence.
+The README provides the main project entry point. The reports preserve detailed
+commands, outputs, troubleshooting notes, and implementation evidence without
+making the README unnecessarily long.
 
-## Quick Setup
+---
 
-Clone the repository:
+## Installation
+
+### 1. Clone the repository
 
 ```powershell
 git clone https://github.com/Kapish196258/real_time_fraud_detection.git
 cd real_time_fraud_detection
 ```
 
-Create and activate the virtual environment:
+### 2. Create the virtual environment
 
 ```powershell
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 ```
 
-Install dependencies:
+### 3. Install dependencies
 
 ```powershell
 pip install -r requirements.txt
 ```
 
-Place the PaySim dataset at:
+### 4. Add the dataset
+
+Place the PaySim CSV at:
 
 ```text
 data/raw/paysim_transactions.csv
 ```
 
-The dataset and generated model files are not stored in Git because of their size.
+### 5. Confirm Docker Desktop is running
 
-## Run the Pipeline
+Docker Desktop must be running before executing Docker Compose commands.
 
-Start the Docker services:
+---
+
+## Run the Complete Pipeline
+
+The system should be run using separate PowerShell terminals.
+
+### Terminal 1 — Start Docker services
 
 ```powershell
+cd D:\Projects\real_time_fraud_detection
+.\venv\Scripts\Activate.ps1
+
 docker compose -f .\docker\docker-compose.yml up -d
-docker ps
+docker compose -f .\docker\docker-compose.yml ps
 ```
 
-Current service addresses:
+Main service addresses:
 
 | Service | Address |
 |---|---|
@@ -288,86 +610,259 @@ Current service addresses:
 | Kafka UI | `http://localhost:8080` |
 | MongoDB | `localhost:27017` |
 | Mongo Express | `http://localhost:8081` |
+| Prometheus | `http://localhost:9090` |
+| Grafana | `http://localhost:3000` |
 
-Start the Spark fraud pipeline in Terminal 1:
+### Terminal 2 — Start Spark
 
 ```powershell
+cd D:\Projects\real_time_fraud_detection
+.\venv\Scripts\Activate.ps1
+
 python -m src.streaming.spark_fraud_pipeline --reset-checkpoint
 ```
 
-Wait until the initial empty Spark batch is complete.
+Wait until Spark reports that it is waiting for transactions.
 
-Send transactions from Terminal 2:
+The module-based command must be used because the pipeline imports modules from
+the project-level `src` package.
+
+### Terminal 3 — Run the producer
+
+Small smoke test:
 
 ```powershell
-python .\src\streaming\producer.py --limit 5 --sleep 0.5
+python .\src\streaming\producer.py `
+    --start-row 0 `
+    --limit 5 `
+    --sleep 0.5
 ```
 
-The five-record command is used as a smoke test. Larger unique transaction ranges should be used for dashboard and load testing.
-
-## Verify the Results
-
-Check Prometheus metrics while Spark is running:
+Repeatable 2,000-record load test:
 
 ```powershell
-Invoke-WebRequest http://localhost:8000/metrics -UseBasicParsing |
+python .\src\streaming\producer.py `
+    --start-row 8000 `
+    --limit 2000 `
+    --sleep 0.01
+```
+
+This load test generates transaction IDs:
+
+```text
+8001-10000
+```
+
+Use a new start row for every non-overlapping validation run.
+
+---
+
+## Verify the Pipeline
+
+### Check Prometheus metrics
+
+While Spark is running:
+
+```powershell
+Invoke-WebRequest `
+    http://localhost:8000/metrics `
+    -UseBasicParsing |
 Select-Object -ExpandProperty Content |
 Select-String "fraud_"
 ```
 
-Check MongoDB collection counts:
+### Check model-quality metrics
 
 ```powershell
-docker exec fraud-mongodb mongosh fraud_detection_db --eval "print('Predictions:',db.prediction_history.countDocuments()); print('Alerts:',db.fraud_alerts.countDocuments());"
+Invoke-WebRequest `
+    http://localhost:8000/metrics `
+    -UseBasicParsing |
+Select-Object -ExpandProperty Content |
+Select-String `
+    "fraud_true_positives_total|fraud_true_negatives_total|fraud_false_positives_total|fraud_false_negatives_total"
 ```
 
-The validated five-record test produced:
+### Check MongoDB collection counts
+
+```powershell
+docker exec fraud-mongodb mongosh fraud_detection_db --eval "
+print(
+    'Predictions:',
+    db.prediction_history.countDocuments()
+);
+print(
+    'Alerts:',
+    db.fraud_alerts.countDocuments()
+);
+"
+```
+
+### Check a specific transaction range
+
+```powershell
+docker exec fraud-mongodb mongosh fraud_detection_db --eval "
+print(
+    'IDs 8001-10000:',
+    db.prediction_history.countDocuments({
+        transaction_id: {
+            `$gte: 8001,
+            `$lte: 10000
+        }
+    })
+);
+"
+```
+
+### Check Grafana health
+
+```powershell
+curl.exe http://localhost:3000/api/health
+```
+
+Expected result:
+
+```text
+database: ok
+```
+
+---
+
+## Validated Live-Test Results
+
+A repeatable 2,000-transaction test was completed using transaction IDs
+8001-10000.
+
+The final non-empty Spark batch produced:
 
 | Metric | Result |
 |---|---:|
-| Transactions processed | 5 |
+| Successful predictions | 1,999 |
+| Failed predictions | 0 |
+| Actual fraud labels | 2 |
 | Predicted fraud alerts | 2 |
-| Prediction failures | 0 |
 | True positives | 2 |
-| True negatives | 3 |
+| True negatives | 1,997 |
 | False positives | 0 |
 | False negatives | 0 |
+| Prediction operations | 1,999 |
+| Fraud-alert operations | 2 |
+| Processing time | Approximately 199 seconds |
+| Prediction throughput | Approximately 10 records/second |
 
-This is a functional smoke test, not a production performance benchmark.
+The complete 2,000-record run was distributed across multiple Spark
+micro-batches.
 
-## Next Milestone
+---
 
-The next stage is to add:
+## Testing
 
-- a Prometheus Docker service;
-- Prometheus scrape configuration;
-- a Grafana service;
-- an automatically provisioned Grafana dashboard;
-- larger-volume streaming tests;
-- throughput and latency analysis;
-- Spark and MongoDB performance optimization.
+Run the automated test suite from the project root:
 
-The dashboard will monitor operational metrics from Prometheus. Detailed transaction and fraud-alert records will continue to be stored in MongoDB.
+```powershell
+python -m pytest -v
+```
+
+The producer range-validation suite currently contains:
+
+```text
+17 passing tests
+```
+
+The tests validate:
+
+- start-row behavior;
+- transaction-ID generation;
+- valid and invalid producer ranges;
+- message limits;
+- repeatable non-overlapping test execution.
+
+---
+
+## Shutdown
+
+Stop the Spark pipeline with:
+
+```text
+Ctrl+C
+```
+
+Stop the Docker services:
+
+```powershell
+docker compose -f .\docker\docker-compose.yml down
+```
+
+To remove project volumes as well:
+
+```powershell
+docker compose -f .\docker\docker-compose.yml down -v
+```
+
+The volume-removal command deletes persisted Docker data and should be used
+only when a complete reset is required.
+
+---
+
+## Limitations
+
+- PaySim contains synthetic rather than real banking transactions.
+- Fraud is highly imbalanced compared with non-fraud activity.
+- Prometheus application counters reset when the Spark Python process restarts.
+- The current model does not retrain automatically.
+- Concept drift is not monitored.
+- No external notification system is connected to fraud alerts.
+- The pipeline is validated locally rather than on a production cluster.
+- Large-scale Spark and MongoDB optimization remains possible.
+
+---
+
+## Future Improvements
+
+Possible future extensions include:
+
+- automatic model retraining;
+- model and data drift monitoring;
+- email, SMS, or messaging alerts;
+- cloud deployment;
+- Kafka partition scaling;
+- Spark cluster deployment;
+- MongoDB sharding;
+- authentication and access control;
+- CI/CD pipelines;
+- model registry integration;
+- real financial institution data integration.
+
+These improvements are outside the scope of the completed local end-to-end
+project.
+
+---
 
 ## Team Workflow
 
-Before starting work:
+Before beginning work:
 
 ```powershell
+git switch main
 git pull origin main
 ```
 
-After completing and testing an assigned task:
+After completing and testing a change:
 
 ```powershell
 git status
-git add .
+git add <specific-files>
+git diff --cached
 git commit -m "Describe the completed work"
-git pull --rebase origin main
 git push origin main
 ```
 
+Specific files should be staged instead of using `git add .` so that
+checkpoints, caches, logs, datasets, and unrelated files are not committed
+accidentally.
+
 Avoid force-pushing to `main`.
+
+---
 
 ## Repository
 

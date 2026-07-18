@@ -877,6 +877,12 @@ only when a complete reset is required.
 
 ---
 
+## Troubleshooting
+
+For common Docker, Kafka, Spark, MongoDB, Prometheus and Grafana issues, see the [Troubleshooting Guide](reports/troubleshooting_guide.md).
+
+---
+
 ## Future Improvements
 
 Possible future extensions include:
